@@ -5,21 +5,19 @@ applications:
       phases:
         preBuild:
           commands:
-            # Amplify runs commands from appRoot (frontend/).
-            # Go up to repo root so npm ci installs the full workspace
-            # including packages/shared which frontend imports from.
-            - cd $CODEBUILD_SRC_DIR
             - nvm install 22
             - nvm use 22
             - node --version
             - npm --version
-            - npm ci
+            # appRoot is frontend/ — go up one level to the repo root
+            # where package.json and package-lock.json live
+            - cd .. && npm ci
         build:
           commands:
-            - cd $CODEBUILD_SRC_DIR
-            - npm run build -w @explorer/frontend
+            # Each phase restarts in appRoot (frontend/), so cd .. again
+            - cd .. && npm run build -w @explorer/frontend
       artifacts:
-        # Path is relative to appRoot (frontend/), so dist = frontend/dist
+        # Relative to appRoot (frontend/), so "dist" = frontend/dist
         baseDirectory: dist
         files:
           - '**/*'
