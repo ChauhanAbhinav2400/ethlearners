@@ -1,43 +1,27 @@
 version: 1
 
-# ─────────────────────────────────────────────────────────────────────────────
-# AWS Amplify build spec — Ethereum Explorer (React + Vite SPA)
-#
-# - Installs from repo root so the npm workspace and packages/shared resolve
-# - Only builds the frontend workspace; backend is on ECS Fargate separately
-# - Node 22 is enforced via nvm before any commands run
-# - VITE_API_URL is set to empty in Amplify env vars so the /api rewrite proxy
-#   is used — no cross-domain requests, cookies stay first-party (lax works)
-# ─────────────────────────────────────────────────────────────────────────────
-
 applications:
-  - frontend:
+  - appRoot: frontend
+    frontend:
       phases:
         preBuild:
           commands:
-            # Pin Node to the version required by engines field in package.json
             - nvm install 22
             - nvm use 22
             - node --version
             - npm --version
-            # Install from the monorepo root so packages/shared and workspace
-            # symlinks are available when Vite resolves imports at build time
-            - npm ci
+            - cd .. && npm ci
+
         build:
           commands:
-            - npm run build -w @explorer/frontend
-        postBuild:
-          commands:
-            - echo "Frontend build complete → frontend/dist"
+            - cd .. && npm run build -w @explorer/frontend
+
       artifacts:
-        # Vite outputs to frontend/dist relative to appRoot (repo root)
-        baseDirectory: frontend/dist
+        baseDirectory: dist
         files:
           - '**/*'
+
       cache:
         paths:
-          # Root node_modules includes workspace symlinks — cache the whole tree
+          - ../node_modules/**/*
           - node_modules/**/*
-          - frontend/node_modules/**/*
-    # appRoot must be repo root so npm ci resolves the full workspace
-    appRoot: .
