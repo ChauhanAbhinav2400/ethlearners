@@ -1,5 +1,5 @@
 import { afterEach,beforeEach,describe,expect,it,vi } from 'vitest';
-import { cleanup,render,screen } from '@testing-library/react';
+import { cleanup,fireEvent,render,screen,waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EverydayDemonstration } from './EverydayDemonstration';
 import { ChallengeBoard } from './ChallengeBoard';
@@ -13,5 +13,87 @@ describe('Everyday interactive lessons',()=>{
   it.each(Array.from({length:15},(_,i)=>i))('renders and resets everyday demonstration %s',async index=>{const u=userEvent.setup();render(<EverydayDemonstration index={index}/>);expect(screen.getByRole('heading',{level:3})).toBeInTheDocument();await u.click(screen.getByText('Reset demonstration'));expect(screen.getByText(/Local teaching data only/)).toBeInTheDocument();});
 });
 describe('Master Challenge accessibility and confirmation',()=>{
-  it('supports answer selection without consuming an attempt until final confirmation',async()=>{const u=userEvent.setup();const submit=vi.fn();render(<ChallengeBoard question={{prompt:'Which prevents replay?',options:['Fee','Nonce','Timestamp','Balance']}} disabled={false} busy={false} onSubmit={submit}/>);expect(screen.getByText('Submit Answer')).toBeDisabled();await u.click(screen.getByRole('button',{name:/B\s*Nonce/}));await u.click(screen.getByText('Submit Answer'));expect(submit).not.toHaveBeenCalled();await u.click(screen.getByText('Cancel'));expect(submit).not.toHaveBeenCalled();await u.click(screen.getByText('Submit Answer'));await u.click(screen.getByText('Confirm submission'));expect(submit).toHaveBeenCalledExactlyOnceWith(1);});
+  const question={prompt:'Which prevents replay?',options:['Fee','Nonce','Timestamp','Balance']};
+  beforeEach(()=>{
+    // jsdom has no layout. Supply only the real board geometry; sensors and
+    // collision detection still run through dnd-kit's production code.
+    vi.spyOn(HTMLElement.prototype,'getBoundingClientRect').mockImplementation(function(this:HTMLElement){
+      if(this.classList.contains('challenge-drop'))return new DOMRect(0,350,600,150);
+      const label=this.getAttribute('aria-label')||'';
+      const letter=label.match(/^Drag answer ([A-D]):/)?.[1];
+      if(letter){const i=letter.charCodeAt(0)-65;return new DOMRect(i%2*300,100+Math.floor(i/2)*110,280,90);}
+      if(this.style.position==='fixed')return new DOMRect(Number.parseFloat(this.style.left)||0,Number.parseFloat(this.style.top)||0,Number.parseFloat(this.style.width)||280,Number.parseFloat(this.style.height)||90);
+      return new DOMRect(0,0,600,800);
+    });
+  });
+  afterEach(()=>vi.restoreAllMocks());
+
+  it('does not select answers when a student clicks or taps a card',async()=>{
+    const submit=vi.fn();render(<ChallengeBoard question={question} disabled={false} busy={false} onSubmit={submit}/>);
+    const card=screen.getByRole('button',{name:'Drag answer B: Nonce'});
+    await userEvent.setup().click(card);
+    fireEvent.touchStart(card,{touches:[{identifier:1,clientX:330,clientY:140}]});
+    fireEvent.touchEnd(card,{touches:[],changedTouches:[{identifier:1,clientX:330,clientY:140}]});
+    expect(screen.getByRole('button',{name:'Submit Answer'})).toBeDisabled();
+    expect(screen.getByRole('region',{name:'Your answer drop area'})).toHaveTextContent('Drop your answer here');
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it('supports keyboard dragging and requires final confirmation before submitting',async()=>{
+    const u=userEvent.setup();const submit=vi.fn();render(<ChallengeBoard question={question} disabled={false} busy={false} onSubmit={submit}/>);
+    const card=screen.getByRole('button',{name:'Drag answer B: Nonce'});card.focus();
+    await u.keyboard('[Space]');await u.keyboard('[ArrowDown]');
+    await waitFor(()=>expect(screen.getByRole('region',{name:'Your answer drop area'})).toHaveTextContent('Release to place your answer'));
+    await u.keyboard('[Space]');
+    expect(screen.getByRole('region',{name:'Your answer drop area'})).toHaveTextContent('Your answer · B');
+    await u.click(screen.getByRole('button',{name:'Submit Answer'}));expect(submit).not.toHaveBeenCalled();
+    await u.click(screen.getByText('Cancel'));expect(submit).not.toHaveBeenCalled();
+    await u.click(screen.getByRole('button',{name:'Submit Answer'}));await u.click(screen.getByText('Confirm submission'));
+    expect(submit).toHaveBeenCalledExactlyOnceWith(1);
+  });
+
+  it('accepts a mouse drag only inside the drop area and lets students clear it',async()=>{
+    // dnd-kit suppresses synthetic post-drag clicks for 50 ms. Model a separate
+    // deliberate click when clearing, after its click guard has been removed.
+    const u=userEvent.setup({delay:60});const submit=vi.fn();render(<ChallengeBoard question={question} disabled={false} busy={false} onSubmit={submit}/>);
+    const card=screen.getByRole('button',{name:'Drag answer B: Nonce'});
+    fireEvent.mouseDown(card,{button:0,clientX:330,clientY:140});
+    fireEvent.mouseMove(document,{clientX:350,clientY:160});
+    fireEvent.mouseMove(document,{clientX:650,clientY:250});
+    fireEvent.mouseUp(document,{clientX:650,clientY:250});
+    expect(screen.getByRole('button',{name:'Submit Answer'})).toBeDisabled();
+    fireEvent.mouseDown(card,{button:0,clientX:330,clientY:140});
+    fireEvent.mouseMove(document,{clientX:350,clientY:160});
+    fireEvent.mouseMove(document,{clientX:300,clientY:420});
+    await waitFor(()=>expect(screen.getByRole('region',{name:'Your answer drop area'})).toHaveTextContent('Release to place your answer'));
+    fireEvent.mouseUp(document,{clientX:300,clientY:420});
+    expect(screen.getByRole('button',{name:'Submit Answer'})).toBeEnabled();
+    await u.click(screen.getByRole('button',{name:'Clear answer'}));
+    expect(screen.getByRole('button',{name:'Submit Answer'})).toBeDisabled();expect(submit).not.toHaveBeenCalled();
+  });
+
+  it('cancels a keyboard drag without selecting an answer',async()=>{
+    const u=userEvent.setup();render(<ChallengeBoard question={question} disabled={false} busy={false} onSubmit={vi.fn()}/>);
+    screen.getByRole('button',{name:'Drag answer B: Nonce'}).focus();await u.keyboard('[Enter]');await u.keyboard('[ArrowDown]');await u.keyboard('[Escape]');
+    expect(screen.getByRole('button',{name:'Submit Answer'})).toBeDisabled();
+    expect(screen.getByRole('region',{name:'Your answer drop area'})).toHaveTextContent('Drop your answer here');
+  });
+
+  it('places an answer after a touch hold and drag into the target',async()=>{
+    const submit=vi.fn();render(<ChallengeBoard question={question} disabled={false} busy={false} onSubmit={submit}/>);
+    const card=screen.getByRole('button',{name:'Drag answer B: Nonce'});
+    fireEvent.touchStart(card,{touches:[{identifier:1,clientX:330,clientY:140}]});
+    await waitFor(()=>expect(card).toHaveClass('is-dragging'));
+    fireEvent.touchMove(card,{touches:[{identifier:1,clientX:300,clientY:420}]});
+    await waitFor(()=>expect(screen.getByRole('region',{name:'Your answer drop area'})).toHaveTextContent('Release to place your answer'));
+    fireEvent.touchEnd(card,{touches:[],changedTouches:[{identifier:1,clientX:300,clientY:420}]});
+    expect(screen.getByRole('button',{name:'Submit Answer'})).toBeEnabled();
+    expect(screen.getByRole('region',{name:'Your answer drop area'})).toHaveTextContent('Your answer · B');expect(submit).not.toHaveBeenCalled();
+  });
+
+  it.each([{disabled:true,busy:false},{disabled:false,busy:true}])('blocks dragging and submission while locked: %s',async state=>{
+    const submit=vi.fn();render(<ChallengeBoard question={question} {...state} onSubmit={submit}/>);
+    expect(screen.getByRole('button',{name:'Drag answer B: Nonce'})).toBeDisabled();
+    expect(screen.getByRole('button',{name:state.busy?'Checking answer…':'Submit Answer'})).toBeDisabled();expect(submit).not.toHaveBeenCalled();
+  });
 });
