@@ -1,0 +1,35 @@
+version: 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AWS Amplify build spec for Ethereum Explorer (React + Vite SPA)
+# Backend is deployed separately on ECS Fargate — Amplify only hosts frontend.
+# ─────────────────────────────────────────────────────────────────────────────
+
+applications:
+  - frontend:
+      phases:
+        preBuild:
+          commands:
+            - node --version
+            - npm --version
+            # Install from root so workspace packages (packages/shared) are available
+            - npm ci
+        build:
+          commands:
+            # VITE_API_URL is set as an Amplify environment variable.
+            # Leave it empty to use the /api rewrite proxy below (recommended).
+            - npm run build -w @explorer/frontend
+        postBuild:
+          commands:
+            - echo "Build complete. Output in frontend/dist"
+      artifacts:
+        # Where Amplify finds the built files to serve
+        baseDirectory: frontend/dist
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+          - frontend/node_modules/**/*
+          - backend/node_modules/**/*
+    appRoot: .
