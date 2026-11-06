@@ -1,0 +1,28 @@
+{
+  "name": "ethereum-explorer",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "dev:isolated": "node scripts/dev-isolated.mjs",
+    "dev:frontend": "npm run dev -w @explorer/frontend",
+    "dev:backend": "npm run dev -w @explorer/backend",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "test:contracts": "forge test --root contracts",
+    "deploy:contracts": "node scripts/deploy-rewards.mjs",
+    "start": "npm start -w @explorer/backend"
+  },
+  "devDependencies": {
+    "@openzeppelin/contracts": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=22.20.0"
+  }
+}
