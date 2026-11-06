@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs (builder stage handles this)
+frontend/dist/
+backend/dist/
+*.tsbuildinfo
+
+# Dev / test
+coverage/
+.qa/
+.npm-cache/
+**/.vite/
+
+# Secrets — never bake into image
+.env
+.env.*
+!.env.example
+backend/.env
+
+# Contracts (not needed in runtime image)
+contracts/
+
+# Docs
+docs/
+*.md
+!README.md
+
+# Git
+.git/
+.github/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
