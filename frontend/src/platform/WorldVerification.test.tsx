@@ -11,6 +11,21 @@ vi.mock('@worldcoin/idkit',()=>({proofOfHuman:()=>({type:'ProofOfHuman'}),orbLeg
 afterEach(()=>{cleanup();vi.resetAllMocks();});
 function mount(options:{switchAccount?:boolean;canVerify?:boolean;verified?:boolean;credentialMode?:'orb-legacy'|'proof-of-human'}={}){let id=0;vi.mocked(api).mockImplementation(async(path:string)=>{if(path==='/world-id/status')return {verified:options.verified||false,configured:true,canVerify:options.canVerify!==false,walletVerified:options.canVerify!==false,quizCompleted:true,environment:'production'};if(path==='/world-id/request')return {credentialMode:options.credentialMode||'proof-of-human',id:String(++id),rpContext:{rp_id:'rp_0000000000000001'},signal:'test',appId:'app_test',action:'test',environment:'production'};if(options.switchAccount)return {accountSwitched:true,redirectTo:'/dashboard',verified:true};throw new Error('This verification request expired.');});const client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});client.setQueryData(['previous-account-private'],{secret:'old account cache'});render(<QueryClientProvider client={client}><MemoryRouter initialEntries={['/verify']}><Routes><Route path='/verify' element={<WorldVerification/>}/><Route path='/dashboard' element={<p>Original account dashboard</p>}/></Routes></MemoryRouter></QueryClientProvider>);return client;}
 describe('World ID widget failure handling',()=>{
+  it('points production-verified students to the current chapter challenge',async()=>{
+    vi.mocked(api).mockResolvedValue({verified:true,environment:'production',walletVerified:true,quizCompleted:true,canVerify:true});
+    const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
+    render(<QueryClientProvider client={client}><MemoryRouter><WorldVerification challengeHref="#master-challenge"/></MemoryRouter></QueryClientProvider>);
+    expect(await screen.findByRole('link',{name:'Continue to your challenge'})).toHaveAttribute('href','#master-challenge');
+    expect(screen.queryByText('Verify with World ID')).not.toBeInTheDocument();
+  });
+  it('keeps simulation verification clearly separate from a reward-ready challenge',async()=>{
+    vi.mocked(api).mockResolvedValue({verified:true,environment:'staging',walletVerified:true,quizCompleted:true,canVerify:true});
+    const client=new QueryClient({defaultOptions:{queries:{retry:false}}});
+    render(<QueryClientProvider client={client}><MemoryRouter><WorldVerification/></MemoryRouter></QueryClientProvider>);
+    expect(await screen.findByRole('status')).toHaveTextContent('Simulation only; rewards disabled.');
+    expect(screen.queryByRole('link',{name:'Continue to your challenge'})).not.toBeInTheDocument();
+    expect(screen.queryByText('Verify with World ID')).not.toBeInTheDocument();
+  });
   it('uses the server-selected Orb compatibility mode for the widget',async()=>{
     mount({credentialMode:'orb-legacy'});const u=userEvent.setup();
     await waitFor(()=>expect(screen.getByText('Verify with World ID')).toBeEnabled());
