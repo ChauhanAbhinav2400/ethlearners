@@ -1,8 +1,13 @@
 version: 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# AWS Amplify build spec for Ethereum Explorer (React + Vite SPA)
-# Backend is deployed separately on ECS Fargate — Amplify only hosts frontend.
+# AWS Amplify build spec — Ethereum Explorer (React + Vite SPA)
+#
+# - Installs from repo root so the npm workspace and packages/shared resolve
+# - Only builds the frontend workspace; backend is on ECS Fargate separately
+# - Node 22 is enforced via nvm before any commands run
+# - VITE_API_URL is set to empty in Amplify env vars so the /api rewrite proxy
+#   is used — no cross-domain requests, cookies stay first-party (lax works)
 # ─────────────────────────────────────────────────────────────────────────────
 
 applications:
@@ -10,26 +15,29 @@ applications:
       phases:
         preBuild:
           commands:
+            # Pin Node to the version required by engines field in package.json
+            - nvm install 22
+            - nvm use 22
             - node --version
             - npm --version
-            # Install from root so workspace packages (packages/shared) are available
+            # Install from the monorepo root so packages/shared and workspace
+            # symlinks are available when Vite resolves imports at build time
             - npm ci
         build:
           commands:
-            # VITE_API_URL is set as an Amplify environment variable.
-            # Leave it empty to use the /api rewrite proxy below (recommended).
             - npm run build -w @explorer/frontend
         postBuild:
           commands:
-            - echo "Build complete. Output in frontend/dist"
+            - echo "Frontend build complete → frontend/dist"
       artifacts:
-        # Where Amplify finds the built files to serve
+        # Vite outputs to frontend/dist relative to appRoot (repo root)
         baseDirectory: frontend/dist
         files:
           - '**/*'
       cache:
         paths:
+          # Root node_modules includes workspace symlinks — cache the whole tree
           - node_modules/**/*
           - frontend/node_modules/**/*
-          - backend/node_modules/**/*
+    # appRoot must be repo root so npm ci resolves the full workspace
     appRoot: .
