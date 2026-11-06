@@ -1,27 +1,25 @@
 version: 1
 
-applications:
-  - appRoot: frontend
-    frontend:
-      phases:
-        preBuild:
-          commands:
-            - nvm install 22
-            - nvm use 22
-            - node --version
-            - npm --version
-            - cd .. && npm ci
-
-        build:
-          commands:
-            - cd .. && npm run build -w @explorer/frontend
-
-      artifacts:
-        baseDirectory: dist
-        files:
-          - '**/*'
-
-      cache:
-        paths:
-          - ../node_modules/**/*
-          - node_modules/**/*
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - nvm install 22
+        - nvm use 22
+        - node --version
+        - npm --version
+        - npm ci
+    build:
+      commands:
+        - npm run build -w @explorer/frontend
+    postBuild:
+      commands:
+        - echo "Frontend build complete → frontend/dist"
+  artifacts:
+    baseDirectory: frontend/dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - frontend/node_modules/**/*
