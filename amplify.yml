@@ -9,15 +9,17 @@ applications:
             - nvm use 22
             - node --version
             - npm --version
-            # appRoot is frontend/ — go up one level to the repo root
-            # where package.json and package-lock.json live
-            - cd .. && npm ci
+            # CODEBUILD_SRC_DIR is set by Amplify to the repo root directory.
+            # Store it so every phase can reference it reliably.
+            - export REPO_ROOT=$(pwd | sed 's|/frontend$||')
+            - echo "Repo root is $REPO_ROOT"
+            - ls "$REPO_ROOT/package.json"
+            - cd "$REPO_ROOT" && npm ci
         build:
           commands:
-            # Each phase restarts in appRoot (frontend/), so cd .. again
-            - cd .. && npm run build -w @explorer/frontend
+            - export REPO_ROOT=$(pwd | sed 's|/frontend$||')
+            - cd "$REPO_ROOT" && npm run build -w @explorer/frontend
       artifacts:
-        # Relative to appRoot (frontend/), so "dist" = frontend/dist
         baseDirectory: dist
         files:
           - '**/*'
