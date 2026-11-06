@@ -1,0 +1,56 @@
+version: 0.2
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AWS CodeBuild build spec — Ethereum Explorer backend
+#
+# What this does:
+#   1. Builds the Docker image from the repo root Dockerfile
+#   2. Pushes it to ECR with both :latest and :<git-sha> tags
+#   3. Outputs imagedefinitions.json so CodePipeline can deploy to ECS
+#
+# Environment variables expected (set in CodeBuild project or CodePipeline):
+#   AWS_DEFAULT_REGION   — e.g. us-east-1          (auto-set by CodeBuild)
+#   AWS_ACCOUNT_ID       — your 12-digit account ID (set manually)
+#   ECR_REPO_NAME        — ethereum-explorer-api    (set manually)
+#   CONTAINER_NAME       — api                      (set manually)
+# ─────────────────────────────────────────────────────────────────────────────
+
+env:
+  variables:
+    ECR_REPO_NAME: "ethereum-explorer-api"
+    CONTAINER_NAME: "api"
+
+phases:
+  pre_build:
+    commands:
+      - echo "=== Logging in to Amazon ECR ==="
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - ECR_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPO_NAME}"
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" |
+          docker login --username AWS --password-stdin
+          "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+      - IMAGE_TAG="${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}"
+      - echo "Image tag - $IMAGE_TAG"
+
+  build:
+    commands:
+      - echo "=== Building Docker image ==="
+      - docker build -t "${ECR_REPO_NAME}:${IMAGE_TAG}" .
+      - docker tag "${ECR_REPO_NAME}:${IMAGE_TAG}" "${ECR_URI}:${IMAGE_TAG}"
+      - docker tag "${ECR_REPO_NAME}:${IMAGE_TAG}" "${ECR_URI}:latest"
+
+  post_build:
+    commands:
+      - echo "=== Pushing image to ECR ==="
+      - docker push "${ECR_URI}:${IMAGE_TAG}"
+      - docker push "${ECR_URI}:latest"
+      - echo "=== Writing imagedefinitions.json for ECS deploy ==="
+      # CodePipeline ECS deploy action reads this file to update the container image
+      - printf '[{"name":"%s","imageUri":"%s"}]' "$CONTAINER_NAME" "${ECR_URI}:${IMAGE_TAG}" > imagedefinitions.json
+      - cat imagedefinitions.json
+      - echo "=== Build complete ==="
+
+# CodePipeline picks up imagedefinitions.json from this artifact
+artifacts:
+  files:
+    - imagedefinitions.json
