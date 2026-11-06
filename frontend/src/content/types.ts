@@ -1,0 +1,27 @@
+export type SimulationKey = 'banking' | 'replication' | 'peers' | 'hashes' | 'signatures' | 'blocks' | 'node' | 'wallet' | 'journey' | 'evm' | 'gas' | 'consensus' | 'txpool' | 'receipts' | 'contracts' | 'rpc' | 'rollups' | 'bridges' | 'oracles' | 'smartAccounts' | 'pow' | 'merge' | 'upgrades' | 'standards';
+export type Question = { prompt: string; options: string[]; answer: number; explanation: string };
+export type Lesson = {
+  id: string;
+  worldId: string;
+  title: string;
+  shortTitle: string;
+  summary: string;
+  duration: number;
+  simulation: SimulationKey;
+  aliases: string[];
+  prerequisites: string[];
+  related: string[];
+  intro: string[];
+  question: Question;
+  experiment: string;
+  reveal: string;
+  mentalModel: string;
+  deepDive: { title: string; body: string; example?: string; code?: string }[];
+  relatedWhy?: Record<string, string>;
+  boundary: string;
+  check: Question;
+  nextQuestion: string;
+  sources: { title: string; url: string }[];
+};
+export type CurriculumWorld = { id: string; title: string; description: string; order: number; lessonIds: string[]; topics: string[] };
+export type SimulationProps = { onDiscover: (message: string) => void };
