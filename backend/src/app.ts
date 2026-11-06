@@ -151,7 +151,7 @@ export function createApp(c:Config=config){
   app.get('/api/wallets',auth,async(req,res)=>res.json({wallets:await Wallet.find({student:sid(req)}).select('address verifiedAt').lean(),selected:(await Student.findById(sid(req)))?.rewardWallet}));
   app.post('/api/wallets/challenge',auth,async(req,res)=>{
     const b=z.object({address:addressSchema}).strict().parse(req.body);const nonce=randomToken();const expiresAt=new Date(Date.now()+5*60000);
-    const message=`Ethereum Explorer wallet ownership\nOrigin: ${c.FRONTEND_ORIGIN}\nAccount: ${sid(req)}\nAddress: ${b.address}\nChain ID: 11155111\nNonce: ${nonce}\nExpires: ${expiresAt.toISOString()}\nThis links a reward destination. It does not authorize spending.`;
+    const message=`Web3MadEazy wallet ownership\nOrigin: ${c.FRONTEND_ORIGIN}\nAccount: ${sid(req)}\nAddress: ${b.address}\nChain ID: 11155111\nNonce: ${nonce}\nExpires: ${expiresAt.toISOString()}\nThis links a reward destination. It does not authorize spending.`;
     const challenge=await Challenge.create({student:sid(req),kind:'wallet',address:b.address,nonce,message,expiresAt});res.json({id:String(challenge._id),message});
   });
   app.post('/api/wallets/link',auth,async(req,res)=>{

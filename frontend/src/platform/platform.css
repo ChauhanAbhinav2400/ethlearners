@@ -3,3 +3,5 @@
 @media(max-width:900px){.everyday-layout{grid-template-columns:1fr}.everyday-map{position:static;max-height:160px;border-bottom:1px solid #35422e}.badge-grid{grid-template-columns:1fr 1fr}.platform-grid.three{grid-template-columns:1fr}.platform-header nav{gap:12px}.platform-main{padding:28px 20px 50px}}
 @media(max-width:600px){.path-grid,.platform-grid,.answer-grid{grid-template-columns:1fr}.platform-card,.master-board,.path-card{padding:20px}.platform-header{padding:18px}.platform-brand{font-size:16px}.platform-header nav{font-size:12px}.platform-footer{flex-direction:column}.profile-summary{align-items:flex-start;gap:14px}.profile-avatar{width:60px;height:60px;font-size:32px}.reward-row{align-items:flex-start;flex-direction:column}.lesson-lead{font-size:18px}.badge{padding:16px 12px}.everyday-demo{padding:18px}.everyday-dock{flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.platform *{animation:none!important;transition:none!important}}html[data-motion=reduced] .platform *{animation:none!important;transition:none!important}
+.platform-brand .brand-logo{width:150px;height:47px}
+@media(max-width:600px){.platform-brand .brand-logo{width:132px;height:41px}}

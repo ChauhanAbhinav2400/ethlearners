@@ -1,8 +1,8 @@
-# Ethereum Explorer
+# Web3MadEazy
 
 **Learn Ethereum by understanding an idea, trying it, and explaining what changed.**
 
-Ethereum Explorer has two learning paths, student accounts, chapter assessments, World ID verification, and a Sepolia learning-token reward system. The original dark theme, green accents, 24 Developer lessons, 14 worlds, Story Mode, Explore Mode, and interactive simulations remain.
+Web3MadEazy has two learning paths, student accounts, chapter assessments, World ID verification, and a Sepolia learning-token reward system. The original dark theme, green accents, 24 Developer lessons, 14 worlds, Story Mode, Explore Mode, and interactive simulations remain.
 
 **Atlas is connected and both contracts are deployed and source-verified on Sepolia. The live API smoke checks pass. A real World ID proof and learner reward claim remain to be tested.** Netlify and Render configuration is included; services have not been provisioned. See [verification status](docs/VERIFICATION.md) for executed checks and remaining limits.
 
